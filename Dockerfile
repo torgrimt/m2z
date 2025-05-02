@@ -4,7 +4,7 @@ FROM debian:bullseye-slim
 # Set environment variables for non-interactive frontend
 ENV DEBIAN_FRONTEND=noninteractive
 
-# Install dependencies: mosquitto-clients (for mosquitto_sub), jq, zabbix-sender, ca-certificates, and coreutils (for od)
+# Install dependencies: mosquitto-clients (for mosquitto_sub), jq, zabbix-sender, ca-certificates, coreutils (for od), and perl
 # Using Zabbix 6.0 LTS repository for Debian 11 (Bullseye) as an example.
 RUN apt-get update && \
     apt-get install -y --no-install-recommends \
@@ -13,7 +13,10 @@ RUN apt-get update && \
     wget \
     gnupg \
     ca-certificates \
-    coreutils && \
+    coreutils \
+    perl \
+    libposix-strftime-compiler-perl \
+    libsymbol-util-name-perl && \
     # Install zabbix-sender
     wget https://repo.zabbix.com/zabbix/6.0/debian/pool/main/z/zabbix-release/zabbix-release_6.0-4%2Bdebian11_all.deb && \
     dpkg -i zabbix-release_6.0-4+debian11_all.deb && \
@@ -28,11 +31,11 @@ RUN apt-get update && \
 # Set the working directory
 WORKDIR /app
 
-# Copy the Bash script into the container
-COPY m2z.sh /app/mqtt_to_zabbix.sh
+# Copy the Perl script into the container
+COPY m2z.pl /app/mqtt_to_zabbix.pl
 
 # Make the script executable
-RUN chmod +x /app/mqtt_to_zabbix.sh
+RUN chmod +x /app/mqtt_to_zabbix.pl
 
 # --- Environment Variables (Defaults & Placeholders for zigbee2mqtt example) ---
 # These can be overridden at runtime (docker run -e VAR=value)
@@ -43,7 +46,7 @@ ENV MQTT_BROKER_HOST="your_mqtt_broker_ip_or_hostname"
 ENV MQTT_BROKER_PORT="1883"
 # ENV MQTT_USERNAME="your_mqtt_user"
 # ENV MQTT_PASSWORD="your_mqtt_password"
-ENV MQTT_CLIENT_ID="mqtt-zabbix-bridge-bash"
+ENV MQTT_CLIENT_ID="mqtt-zabbix-bridge-perl"
 ENV MQTT_TOPIC_PATTERN="zigbee2mqtt/+"
 # For "zigbee2mqtt/DeviceName", DeviceName is the 2nd segment (index 1)
 ENV MQTT_TOPIC_DEVICE_ID_SEGMENT_INDEX="1"
@@ -87,6 +90,5 @@ ENV JSON_FIELD_POWER_OUTAGE=".power_outage_count"
 # DEBUG, INFO, WARN, ERROR
 ENV LOG_LEVEL="INFO"
 
-# Run the Bash script when the container launches
-CMD ["/app/mqtt_to_zabbix.sh"]
-
+# Run the Perl script when the container launches
+CMD ["/app/mqtt_to_zabbix.pl"]
