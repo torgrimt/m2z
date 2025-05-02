@@ -4,19 +4,19 @@ This script bridges an MQTT broker (like Zigbee2MQTT) and a Zabbix monitoring se
 
 ## How It Works
 
-1.  **MQTT Subscription**: Uses the `Net::MQTT::Simple` Perl module to listen for messages on a configured topic pattern (e.g., `zigbee2mqtt/+`).
-2.  **Message Parsing**: Extracts a device ID from the topic and uses `JSON` module to parse metric values from the JSON payload.
+1.  **MQTT Subscription**: Uses `mosquitto_sub` to listen for messages on a configured topic pattern (e.g., `zigbee2mqtt/+`).
+2.  **Message Parsing**: Extracts a device ID from the topic and uses `jq` to parse metric values from the JSON payload.
 3.  **Data Forwarding**: Sends extracted metrics to Zabbix via `zabbix_sender` with dynamically constructed item keys (e.g., `z2m.metric[DeviceID]`).
 
 ## Dependencies
 
 * Perl 5.10 or newer
-* Perl modules:
-  * `Net::MQTT::Simple`
-  * `JSON`
-  * `Data::Dumper` (for debugging)
-  * `File::Basename`
-* `zabbix_sender`
+* External commands used by the script:
+  * `mosquitto_sub`
+  * `jq`
+  * `zabbix_sender`
+  * `awk`
+  * `od` (for debug logging)
 
 These are included in the provided `Dockerfile`.
 
@@ -24,10 +24,18 @@ These are included in the provided `Dockerfile`.
 
 Configure via environment variables. Key variables include:
 
-* MQTT connection details: `MQTT_BROKER_HOST`, `MQTT_BROKER_PORT`, `MQTT_USERNAME`, `MQTT_PASSWORD`
+* MQTT connection details: `MQTT_BROKER_HOST`, `MQTT_BROKER_PORT`, `MQTT_USERNAME`, `MQTT_PASSWORD`, `MQTT_CLIENT_ID`
 * MQTT topic settings: `MQTT_TOPIC_PATTERN`, `MQTT_TOPIC_DEVICE_ID_SEGMENT_INDEX`
 * Zabbix server details: `ZABBIX_SERVER_HOST`, `ZABBIX_SERVER_PORT`, `ZABBIX_MONITORED_HOSTNAME`
-* Metric-specific settings: `ENABLE_TEMP`, `ZABBIX_KEY_TEMP` (e.g., `"z2m.temperature[__DEVICE_ID__]"`), `JSON_FIELD_TEMP` (e.g., `"temperature"`) for each metric (humidity, pressure, etc.).
+* Metric-specific settings:
+  * Temperature: `ENABLE_TEMP`, `ZABBIX_KEY_TEMP` (e.g., `"z2m.temperature[__DEVICE_ID__]"`), `JSON_FIELD_TEMP` (e.g., `".temperature"`)
+  * Humidity: `ENABLE_HUMID`, `ZABBIX_KEY_HUMID`, `JSON_FIELD_HUMID`
+  * Pressure: `ENABLE_PRESSURE`, `ZABBIX_KEY_PRESSURE`, `JSON_FIELD_PRESSURE`
+  * Battery: `ENABLE_BATTERY`, `ZABBIX_KEY_BATTERY`, `JSON_FIELD_BATTERY`
+  * Link Quality: `ENABLE_LINKQUALITY`, `ZABBIX_KEY_LINKQUALITY`, `JSON_FIELD_LINKQUALITY`
+  * Voltage: `ENABLE_VOLTAGE`, `ZABBIX_KEY_VOLTAGE`, `JSON_FIELD_VOLTAGE`
+  * Power Outage Count: `ENABLE_POWER_OUTAGE`, `ZABBIX_KEY_POWER_OUTAGE`, `JSON_FIELD_POWER_OUTAGE`
+* Logging: `LOG_LEVEL` (DEBUG, INFO, WARN, ERROR)
 
 **Note on Placeholder:** The script uses `__DEVICE_ID__` in Zabbix key templates, which it replaces with the actual device name.
 
@@ -46,7 +54,8 @@ Configure via environment variables. Key variables include:
       -e ZABBIX_SERVER_HOST="your_zabbix_server_ip" \
       -e ZABBIX_MONITORED_HOSTNAME="ZigbeeSensorsHost" \
       -e ZABBIX_KEY_TEMP="z2m.temperature[__DEVICE_ID__]" \
-      -e JSON_FIELD_TEMP="temperature" \
+      -e JSON_FIELD_TEMP=".temperature" \
+      -e LOG_LEVEL="INFO" \
       # Add other necessary environment variables
       --restart unless-stopped \
       mqtt-zabbix-bridge-perl
