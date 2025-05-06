@@ -1,3 +1,7 @@
+# Disclamer
+
+The code and documentation is written by gemini, to solve a problem and to test out the power of ai :) \
+
 # MQTT to Zabbix Bridge (Bash Script)
 
 This script bridges an MQTT broker (like Zigbee2MQTT) and a Zabbix monitoring server. It subscribes to MQTT topics, parses JSON sensor data, and forwards metrics to Zabbix using `zabbix_sender`. This allows monitoring of MQTT-enabled IoT devices in Zabbix.
